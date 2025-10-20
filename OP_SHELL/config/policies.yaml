@@ -1,0 +1,57 @@
+# OP Shell – Stage 3 Policy Configuration
+#
+# Principle: Explicit allow only. If a user isn't listed, they get NO permissions.
+# Intents must EXACTLY match the `intent` field in your rule definitions (e.g., rules/sre.yaml).
+#
+# ⚠️  WARNING: Never grant destructive intents (e.g., service restarts, config changes)
+#              to untrusted roles without approval workflows (Stage 4+).
+
+roles:
+  # 🔐 Admin: Full access (use sparingly)
+  admin:
+    allowed_intents:
+      - "Restart a systemd service on a given environment"
+      - "Stop a systemd service on a given environment"
+      - "Reload nginx config"
+      - "List all running pods in a Kubernetes namespace"
+      - "Scale a Kubernetes deployment"
+      - "Check disk usage"
+      - "View system logs for a service"
+      - "Check memory usage"
+      - "List open network connections"
+      - "Fetch latest threat intel feed"  # SOC use case
+
+  # 🛠️ SRE: Operational but non-destructive by default
+  sre:
+    allowed_intents:
+      - "List all running pods in a Kubernetes namespace"
+      - "Check disk usage"
+      - "Check memory usage"
+      - "View system logs for a service"
+      - "List open network connections"
+      - "Check nginx status"
+      # ❌ Cannot restart/stop services in prod without Stage 4 approvals
+
+  # 🕵️ SOC Analyst: Read-only security monitoring
+  soc-analyst:
+    allowed_intents:
+      - "Check disk usage"
+      - "List open network connections"
+      - "View system logs for a service"
+      - "Check memory usage"
+      - "Fetch latest threat intel feed"
+
+  # 👨‍🎓 Intern: Highly restricted, read-only only
+  intern:
+    allowed_intents:
+      - "Check disk usage"
+      - "Check memory usage"
+
+# 🔑 Map OS usernames (from $USER) to roles
+# Add your team members here
+user_roles:
+  # Example users – REPLACE with your actual usernames
+  alaysharma: admin
+  alaysharma: sre
+
+  # 💡 Tip: On shared systems, use consistent usernames or integrate with LDAP/SSO in Stage 4

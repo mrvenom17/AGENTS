@@ -1,5 +1,13 @@
-# rules/sre.yaml
+# OP Shell – Stage 3 Rule Definitions (SRE / Infrastructure Focus)
+#
+# Principles:
+# - All commands must be SAFE for sandbox execution (no host mutation)
+# - Destructive actions (restart, stop, scale) require approval
+# - Environment scoping enforced (staging vs prod)
+# - Parameters are sanitized via regex capture groups only
+
 rules:
+  # 🔁 Service Management (systemd)
   - intent: "Restart a systemd service on a given environment"
     pattern: "restart (?P<service>[a-z0-9_-]+) on (?P<env>[a-z]+)"
     template:
@@ -7,40 +15,83 @@ rules:
       description: "Restart systemd service"
       requires_approval: true
       allowed_envs: ["staging", "prod"]
+      execution_context: "host"   # ← NEW FIELD
 
-  - intent: "List all running pods in a Kubernetes namespace"
-    pattern: "list pods in (?P<namespace>[a-z0-9_-]+)"
+  - intent: "Stop a systemd service on a given environment"
+    pattern: "stop (?P<service>[a-z0-9_-]+) on (?P<env>staging|prod)"
     template:
-      command: "kubectl get pods -n {{ namespace }}"
-      description: "List Kubernetes pods"
-      requires_approval: false
-      allowed_envs: []
+      command: "systemctl stop {{ service }}"
+      description: "Stop a systemd-managed service"
+      requires_approval: true
+      allowed_envs: ["staging", "prod"]
 
+  - intent: "Check nginx status"
+    pattern: "check nginx status"
+    template:
+      command: "systemctl is-active nginx"
+      description: "Check if nginx is active"
+      requires_approval: false
+
+  # 📊 System Diagnostics
   - intent: "Check disk usage"
     pattern: "check disk usage"
     template:
       command: "df -h"
-      description: "Show disk space"
+      description: "Show disk space usage"
       requires_approval: false
 
-  - intent: "Deploy application to environment"
-    pattern: "deploy (?P<app>[a-z0-9_-]+) to (?P<env>[a-z]+)"
+  - intent: "Check memory usage"
+    pattern: "check memory usage"
     template:
-      command: "deploy_tool deploy {{ app }} --env={{ env }}"
-      description: "Deploy application"
+      command: "free -h"
+      description: "Show memory and swap usage"
+      requires_approval: false
+
+  - intent: "List open network connections"
+    pattern: "list open network connections"
+    template:
+      command: "ss -tuln"
+      description: "List listening TCP/UDP ports"
+      requires_approval: false
+
+  - intent: "View system logs for a service"
+    pattern: "view logs for (?P<service>[a-z0-9_-]+)"
+    template:
+      command: "journalctl -u {{ service }} -n 50 --no-pager"
+      description: "Show last 50 log lines for a systemd service"
+      requires_approval: false
+
+  # ☸️ Kubernetes (assumes kubectl is in sandbox image)
+  - intent: "List Kubernetes pods"
+    pattern: "list pods in (?P<namespace>[a-z0-9_-]+)"
+    template:
+      command: "kubectl get pods -n {{ namespace }}"
+      description: "List pods"
+      execution_context: "sandbox"  # ← default if omitted
+
+  - intent: "Scale a Kubernetes deployment"
+    pattern: "scale deployment (?P<deployment>[a-z0-9_-]+) to (?P<replicas>[1-9][0-9]*) replicas in (?P<namespace>[a-z0-9_-]+)"
+    template:
+      command: "kubectl scale deployment {{ deployment }} --replicas={{ replicas }} -n {{ namespace }}"
+      description: "Scale a Kubernetes deployment"
       requires_approval: true
       allowed_envs: ["staging", "prod"]
 
-  - intent: "Fetch logs from a service"
-    pattern: "fetch logs for (?P<service>[a-z0-9_-]+)"
+  # 🔄 Config Reload (safe reload, not restart)
+  - intent: "Reload nginx config"
+    pattern: "reload nginx config"
     template:
-      command: "journalctl -u {{ service }} -n 100"
-      description: "Fetch recent logs"
-      requires_approval: false
-
-  - intent: "Open a particular port in the firewall"
-    pattern: "open port (?P<port>[0-9]+)"
-    template:
-      command: "ufw allow {{ port }}"
-      description: "Open firewall port"
+      command: "nginx -t && systemctl reload nginx"
+      description: "Test and reload nginx configuration"
       requires_approval: true
+      allowed_envs: ["staging", "prod"]
+
+  # 🛡️ Security / SOC
+  - intent: "Fetch latest threat intel feed"
+    pattern: "fetch latest threat intel feed"
+    template:
+      command: "curl -s --max-time 10 https://example-threat-feed.local/latest.txt | head -n 20"
+      description: "Fetch and preview latest threat intelligence (internal feed)"
+      requires_approval: false
+      # Note: Network access must be enabled in sandbox for this (Stage 4+)
+      # For Stage 3, this will fail in --network=none — that's OK for MVP
