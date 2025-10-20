@@ -1,0 +1,46 @@
+# rules/sre.yaml
+rules:
+  - intent: "Restart a systemd service on a given environment"
+    pattern: "restart (?P<service>[a-z0-9_-]+) on (?P<env>[a-z]+)"
+    template:
+      command: "systemctl restart {{ service }}"
+      description: "Restart systemd service"
+      requires_approval: true
+      allowed_envs: ["staging", "prod"]
+
+  - intent: "List all running pods in a Kubernetes namespace"
+    pattern: "list pods in (?P<namespace>[a-z0-9_-]+)"
+    template:
+      command: "kubectl get pods -n {{ namespace }}"
+      description: "List Kubernetes pods"
+      requires_approval: false
+      allowed_envs: []
+
+  - intent: "Check disk usage"
+    pattern: "check disk usage"
+    template:
+      command: "df -h"
+      description: "Show disk space"
+      requires_approval: false
+
+  - intent: "Deploy application to environment"
+    pattern: "deploy (?P<app>[a-z0-9_-]+) to (?P<env>[a-z]+)"
+    template:
+      command: "deploy_tool deploy {{ app }} --env={{ env }}"
+      description: "Deploy application"
+      requires_approval: true
+      allowed_envs: ["staging", "prod"]
+
+  - intent: "Fetch logs from a service"
+    pattern: "fetch logs for (?P<service>[a-z0-9_-]+)"
+    template:
+      command: "journalctl -u {{ service }} -n 100"
+      description: "Fetch recent logs"
+      requires_approval: false
+
+  - intent: "Open a particular port in the firewall"
+    pattern: "open port (?P<port>[0-9]+)"
+    template:
+      command: "ufw allow {{ port }}"
+      description: "Open firewall port"
+      requires_approval: true

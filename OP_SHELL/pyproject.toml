@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "op-shell"
+version = "0.1.0"
+description = "Intent-driven secure shell automation"
+dependencies = [
+    "click",
+    "pyyaml",
+    "pydantic",
+    "jinja2"
+]
+
+[project.scripts]
+# Correct entry point for a root-level cli.py file.
+op-shell = "cli:main" 
+
+# --- New section to explicitly tell setuptools what to install in a flat layout ---
+[tool.setuptools]
+# 1. Explicitly list root-level Python files (like cli.py) as modules.
+py-modules = ["cli"]
+
+# 2. Explicitly list the subdirectories containing packages (like core, model, rules).
+# This prevents Setuptools from attempting problematic auto-discovery that causes errors.
+packages = ["core", "model", "rules"]

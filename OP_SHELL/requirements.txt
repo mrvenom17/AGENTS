@@ -1,0 +1,7 @@
+pydantic
+pytest
+click
+jinja2
+pytest-mock
+typing-extensions
+black
